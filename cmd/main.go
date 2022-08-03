@@ -18,5 +18,4 @@ func main() {
 	}
 
 	log.Infoln("Hello world")
-
 }
