@@ -22,15 +22,8 @@ type failable interface {
 	UID() string
 }
 
-type lockService interface {
-}
-
 type FailoverService struct {
 	lock lockService
-}
-
-func (fs *FailoverService) AquireLock() {
-
 }
 
 func GracefulFailover(parent failable, child failable) error {

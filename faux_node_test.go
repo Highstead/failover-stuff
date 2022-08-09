@@ -34,13 +34,16 @@ type FauxNode struct {
 
 // NewFauxNode is a tool for testing.. it will panic if any of the parents or children are not FauxNodes
 func NewFauxNode(position string, parent failable, children []failable) *FauxNode {
-	return &FauxNode{
+	fn := &FauxNode{
 		position: position,
-		parent:   parent.(*FauxNode),
-
-		uid: getFauxUID(),
+		uid:      getFauxUID(),
 	}
 
+	if parent != nil {
+		fn.parent = parent.(*FauxNode)
+	}
+
+	return fn
 }
 
 func (f *FauxNode) UID() string {

@@ -18,7 +18,7 @@ func TestGracefultakeoverHappyPath(t *testing.T) {
 	}
 
 	for _, myTest := range tt {
-		require.Greater(t, 0, myTest.numChildren, fmt.Sprintf("%s: failed due to illegal number of children", myTest.name))
+		require.Greater(t, myTest.numChildren, 0, fmt.Sprintf("%s: failed due to illegal number of children", myTest.name))
 
 		//NewCluster := FailableCluster()
 		parent := NewFauxNode(strconv.Itoa(myTest.numChildren), nil, nil)
@@ -29,5 +29,5 @@ func TestGracefultakeoverHappyPath(t *testing.T) {
 		}
 
 	}
-	require.Fail(t, "unimplemented")
+	require.Fail(t, "unimplemented the part where i do any graceful takeovers")
 }
