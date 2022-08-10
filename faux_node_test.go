@@ -33,13 +33,6 @@ type FauxNode struct {
 	uid string
 }
 
-func (f *FauxNode) String() string {
-	if f.parent != nil {
-		return fmt.Sprintf(" uid: %s, pos: %s, parent: %s", f.uid, f.position, f.parent.uid)
-	}
-	return fmt.Sprintf(" uid: %s, pos: %s, parent: nil", f.uid, f.position)
-}
-
 // NewFauxNode is a tool for testing.. it will panic if any of the parents or children are not FauxNodes
 func NewFauxNode(position string, parent failable, children []failable) *FauxNode {
 	fn := &FauxNode{
@@ -54,18 +47,28 @@ func NewFauxNode(position string, parent failable, children []failable) *FauxNod
 	return fn
 }
 
-func (f *FauxNode) UID() string {
-	return f.uid
+//String is here to implement stringer and make debugging easier
+func (f *FauxNode) String() string {
+	if f.parent != nil {
+		return fmt.Sprintf(" uid: %s, pos: %s, parent: %s", f.uid, f.position, f.parent.uid)
+	}
+	return fmt.Sprintf(" uid: %s, pos: %s, parent: nil", f.uid, f.position)
 }
 
-func (f *FauxNode) Position() string {
-	return f.Position()
+func (f *FauxNode) Writable() bool {
+	return f.writable
 }
 
 func (f *FauxNode) ComparePosition(other failable) int {
 	o := other.(*FauxNode)
 	return strings.Compare(f.Position(), o.Position())
 }
+
+func (f *FauxNode) CompleteTakeover(isWritable bool) error {
+	f.writable = isWritable
+	return nil
+}
+
 func (f *FauxNode) Children() []failable {
 	var failables []failable
 	for _, child := range f.children {
@@ -85,6 +88,11 @@ func (f *FauxNode) PrepareForTakeover() error {
 	return nil
 }
 
+//our fake binlog position
+func (f *FauxNode) Position() string {
+	return f.position
+}
+
 func (f *FauxNode) PrepareToTakeover() error {
 	return nil
 }
@@ -93,9 +101,9 @@ func (f *FauxNode) RevertTakeoverAttempt() error {
 	return nil
 }
 
-func (f *FauxNode) CompleteTakeover(isWritable bool) error {
-	f.writable = isWritable
-	return nil
+//setPosition is here for testing purposes
+func (f *FauxNode) setPosition(pos string) {
+	f.position = pos
 }
 
 func (f *FauxNode) SetParent(parent failable) error {
@@ -110,6 +118,11 @@ func (f *FauxNode) SetParent(parent failable) error {
 	f.parent = parent.(*FauxNode)
 	p.children = append(p.children, f)
 	return nil
+}
+
+//UID is effectively the node name and should be set by 'getFauxUID' on creation
+func (f *FauxNode) UID() string {
+	return f.uid
 }
 
 /// Tests start here
@@ -135,4 +148,16 @@ func TestInitFauxNodeUID(t *testing.T) {
 		}
 	}
 
+}
+
+func TestComparePosition(t *testing.T) {
+	parent := NewFauxNode("1", nil, nil)
+	child := NewFauxNode("0", nil, nil)
+	child.SetParent(parent)
+
+	require.Equal(t, -1, child.ComparePosition(parent))
+	require.Equal(t, 1, parent.ComparePosition(child))
+
+	child.setPosition(parent.position)
+	require.Equal(t, 0, parent.ComparePosition(child))
 }

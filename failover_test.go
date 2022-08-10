@@ -18,14 +18,15 @@ func TestGracefultakeoverHappyPath(t *testing.T) {
 	}
 
 	for _, myTest := range tt {
-		require.Greater(t, myTest.numChildren, 0, fmt.Sprintf("%s: failed due to illegal number of children", myTest.name))
+		require.Greater(t, myTest.numChildren, 0,
+			fmt.Sprintf("%s: cant have a graceful takeover without children", myTest.name))
 
 		//NewCluster := FailableCluster()
 		parent := NewFauxNode(strconv.Itoa(myTest.numChildren), nil, nil)
 
 		for i := 0; i < myTest.numChildren; i++ {
 			newChild := NewFauxNode(strconv.Itoa(i), nil, nil)
-			parent.children = append(parent.children, newChild)
+			newChild.SetParent(parent)
 		}
 
 	}
