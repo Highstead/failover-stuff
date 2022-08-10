@@ -43,7 +43,6 @@ func NewMockLock(ctx context.Context, lockChan chan bool, name string) *mockLock
 }
 
 func (m *mockLock) Close() {
-	fmt.Println("Closing mocklock", m.name)
 	m.cancel()
 }
 
@@ -51,15 +50,14 @@ func (m *mockLock) loop() {
 	for {
 		select {
 		case <-m.ctx.Done():
-			fmt.Println("Done on", m.name)
-			if m.HaveLock() {
-				m.Release()
-			}
+			m.Release()
 			return
 
 		case <-m.lockChan:
 			m.mu.Lock()
-			m.aquired.Store(closedChan) //We close the lock here so that select statements will unblock
+			l := m.aquired.Load().(chan struct{})
+			close(l)
+			m.aquired.Store(l) //We close the lock here so that select statements will unblock
 			m.mu.Unlock()
 		}
 	}
@@ -82,18 +80,28 @@ func (m *mockLock) LockAquired() <-chan struct{} {
 }
 
 func (m *mockLock) Release() error {
-	fmt.Println("Releasing mocklock", m.name)
 	if !m.HaveLock() {
 		return ErrDontHaveLock
 	}
-	select {
-	//If the lock chan is closed we will panic here.  But this is a mock so this should never happen
-	case m.lockChan <- true:
 
-	//This should never happen
-	case <-time.After(defaultLockTimeout):
-		return ErrLockTimeout
+	m.mu.Lock()
+	select {
+	//This will happen during a shutdown of a test
+	case _, ok := <-m.lockChan:
+		//channel is closed, we got here during cleanup
+		if !ok {
+			fmt.Println("channel was closed, not releasing lock to channel")
+			return nil
+		}
+		if ok { //We found something on the lock channel and that should be impossible
+			panic("there should have never been another event on the lock channel")
+		}
+	default:
+		//this would panic without the previous case statement during a test cleanup.  This **SHOULD** never
+		//  block.  If it does something is wrong, and someone else has polluted our lock channel.
+		m.lockChan <- true
 	}
+
 	return nil
 }
 
@@ -133,10 +141,10 @@ func TestMockLock(t *testing.T) {
 	//Make sure the Previous lock is cleaned up
 	select {
 	case <-newMl.LockAquired():
-	case <-time.After(time.Second):
+	case <-time.After(time.Millisecond * 5):
 		require.Fail(t, "expected lock to be aquired")
+
 	}
 	require.True(t, newMl.HaveLock())
-	fmt.Println("Shutting down")
 
 }
