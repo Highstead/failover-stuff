@@ -1,6 +1,7 @@
 package failover
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,13 @@ type FauxNode struct {
 	writable bool
 
 	uid string
+}
+
+func (f *FauxNode) String() string {
+	if f.parent != nil {
+		return fmt.Sprintf(" uid: %s, pos: %s, parent: %s", f.uid, f.position, f.parent.uid)
+	}
+	return fmt.Sprintf(" uid: %s, pos: %s, parent: nil", f.uid, f.position)
 }
 
 // NewFauxNode is a tool for testing.. it will panic if any of the parents or children are not FauxNodes
@@ -115,8 +123,10 @@ func TestInitFauxNodeUID(t *testing.T) {
 			//Test for unique UID
 			require.NotEqual(t, testNodes[i].UID(), testNodes[j].UID())
 
-			//Test that setParent doesnt fail the first time
-			require.NoError(t, testNodes[j].SetParent(testNodes[0]))
+			if i == 0 {
+				//Test that setParent doesnt fail the first time
+				require.NoError(t, testNodes[j].SetParent(testNodes[0]))
+			}
 
 			//Test that we have already set the parent
 			err := testNodes[j].SetParent(testNodes[0])
